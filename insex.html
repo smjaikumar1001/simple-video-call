@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twilio Video Call</title>
+    <style>
+        video {
+            width: 45%;
+            margin: 5px;
+        }
+        #local-video {
+            background-color: lightgrey;
+        }
+    </style>
+</head>
+<body>
+    <div id="video-container">
+        <video id="local-video" autoplay muted></video>
+        <video id="remote-video" autoplay></video>
+    </div>
+
+    <div>
+        <button id="start-call">Start Video Call</button>
+    </div>
+
+    <script src="https://media.twiliocdn.com/sdk/js/video/v2/twilio-video.min.js"></script>
+    <script>
+        let room;
+        let localVideoTrack;
+        let localVideo = document.getElementById('local-video');
+        let remoteVideo = document.getElementById('remote-video');
+        const startCallButton = document.getElementById('start-call');
+
+        startCallButton.addEventListener('click', startCall);
+
+        async function startCall() {
+            // Fetch the access token from the server
+            const response = await fetch('generate_token.php');
+            const data = await response.json();
+
+            const token = data.token;
+            const roomName = 'TestRoom';  // Name of the room
+
+            try {
+                // Connect to the room using the access token
+                room = await Twilio.Video.connect(token, { name: roomName });
+
+                // Display the local video track
+                localVideoTrack = room.localParticipant.videoTracks.values().next().value.track;
+                localVideo.srcObject = new MediaStream([localVideoTrack]);
+
+                // Display remote participant video tracks
+                room.on('participantConnected', participant => {
+                    participant.on('trackSubscribed', track => {
+                        if (track.kind === 'video') {
+                            remoteVideo.srcObject = track.attach();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('Error connecting to the room:', error);
+            }
+        }
+    </script>
+</body>
+</html>
